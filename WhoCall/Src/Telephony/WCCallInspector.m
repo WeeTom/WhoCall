@@ -13,6 +13,7 @@
 #import "WCAddressBook.h"
 #import "WCLiarPhoneList.h"
 #import "WCPhoneLocator.h"
+#import "MDWCGlobal.h"
 
 
 // 保存设置key
@@ -96,6 +97,15 @@
     if (self.handleContactName && isContact) {
         NSString *callerName = [[WCAddressBook defaultAddressBook] contactNameForPhoneNumber:number];
         NSString *msg = [NSString stringWithFormat:@"%@ 打来电话", callerName];
+        [self notifyMessage:msg forPhoneNumber:number];
+        return;
+    }
+    
+    // 明道联系人
+    MDUser *user = [MDWCGlobal userWithNumber:number];
+    if (self.handleContactName && user) {
+        NSString *callerName = user.objectName;
+        NSString *msg = [NSString stringWithFormat:@"明道%@ 打来电话", callerName];
         [self notifyMessage:msg forPhoneNumber:number];
         return;
     }

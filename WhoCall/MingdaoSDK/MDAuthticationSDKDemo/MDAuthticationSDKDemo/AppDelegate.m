@@ -1,40 +1,19 @@
 //
-//  WCAppDelegate.m
-//  WhoCall
+//  AppDelegate.m
+//  MDAuthticationSDKDemo
 //
-//  Created by Wang Xiaolei on 11/17/13.
-//  Copyright (c) 2013 Wang Xiaolei. All rights reserved.
+//  Created by Wee Tom on 14-1-15.
+//  Copyright (c) 2014年 Mingdao. All rights reserved.
 //
 
-#import "WCAppDelegate.h"
-#import "WCSettingViewController.h"
-#import "MMPDeepSleepPreventer.h"
-#import "WCCallInspector.h"
-#import "MDWCGlobal.h"
+#import "AppDelegate.h"
+#import "MDAuthenticator.h"
 
-@interface WCAppDelegate ()
-
-@property (nonatomic, strong) MMPDeepSleepPreventer *sleepPreventer;
-@property (nonatomic, assign) UIBackgroundTaskIdentifier bgTaskID;
-
-@end
-
-@implementation WCAppDelegate
+@implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    // prevent sleep
-    self.sleepPreventer = [[MMPDeepSleepPreventer alloc] init];
-    
-    // 必须正确处理background task，才能在后台发声
-    self.bgTaskID = [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
-        [[UIApplication sharedApplication] endBackgroundTask:self.bgTaskID];
-        self.bgTaskID = UIBackgroundTaskInvalid;
-    }];
-    
-    // call inspector
-    [[WCCallInspector sharedInspector] startInspect];
-    
+    // Override point for customization after application launch.
     return YES;
 }
 
@@ -42,14 +21,11 @@
 {
     NSDictionary *result = [MDAuthenticator mingdaoAppDidFinishAuthenticationWithURL:url];
     if (result) {
-        [MDWCGlobal saveAuthInfo:result];
-        
         NSLog(@"%@", result);
         NSString *errorStirng= result[MDAuthErrorKey];
         if (errorStirng) {
             UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Failed!" message:errorStirng delegate:nil cancelButtonTitle:@"Done" otherButtonTitles:nil];
             [alertView show];
-            [MDAPIManager sharedManager].accessToken = @"0";
             return YES;
         }
         
@@ -57,10 +33,13 @@
         //    NSString *refeshToken = result[MDAuthRefreshTokenKey];
         //    NSString *expireTime = result[MDAuthExpiresTimeKeyl];
         [MDAPIManager sharedManager].accessToken = accessToken;
+        
+        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Succeed!" message:[NSString stringWithFormat:@"token = %@", accessToken] delegate:nil cancelButtonTitle:@"Done" otherButtonTitles:nil];
+        [alertView show];
     }
     return YES;
 }
-
+							
 - (void)applicationWillResignActive:(UIApplication *)application
 {
     // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
@@ -71,13 +50,11 @@
 {
     // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later. 
     // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
-    [self.sleepPreventer startPreventSleep];
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application
 {
     // Called as part of the transition from the background to the inactive state; here you can undo many of the changes made on entering the background.
-    [self.sleepPreventer stopPreventSleep];
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application

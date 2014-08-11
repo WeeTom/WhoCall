@@ -7,16 +7,28 @@
 //
 
 @import AddressBook;
+#import "MDWCGlobal.h"
 #import "WCSettingViewController.h"
 #import "WCCallInspector.h"
 #import "WCAddressBook.h"
 #import "UIAlertView+MKBlockAdditions.h"
 
-@interface WCSettingViewController ()
+#define AppKey @"935527504"
+#define AppSecret @"4fb83603c7904cd9861895a17ce1530c"
+#define RedirectURL @"http://www.mingdao.com"
+
+@interface WCSettingViewController () <MDAuthPanelDelegate>
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *indicator;
+@property (weak, nonatomic) IBOutlet UISwitch *authSwitch;
 
 @end
 
 @implementation WCSettingViewController
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:MDAPIManagerNewTokenSetNotification object:nil];
+}
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
@@ -30,6 +42,9 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(newTokenSet:) name:MDAPIManagerNewTokenSetNotification object:nil];
+    self.authSwitch.on = [MDWCGlobal authed];
     
     WCCallInspector *inspector = [WCCallInspector sharedInspector];
     self.switchLiar.on = inspector.handleLiarPhone;
@@ -93,4 +108,79 @@
     [inspector saveSettings];
 }
 
+- (IBAction)mingdaoAuth:(id)sender {
+    if (self.authSwitch.on) {
+        [self authorizeByMingdaoApp];
+    } else {
+        // TODO:...
+    }
+}
+
+#pragma mark -
+#pragma mark - AuthMethod
+- (void)authorizeByMingdaoApp
+{
+    self.authSwitch.enabled = NO;
+    [self.indicator startAnimating];
+    if (![MDAuthenticator authorizeByMingdaoAppWithAppKey:AppKey appSecret:AppSecret]) {
+        // 未安装明道App
+        [self authorizeByMingdaoMobilePage];
+    }
+}
+
+- (void)authorizeByMingdaoMobilePage
+{
+    // 通过 @MDAuthPanel 进行web验证
+    MDAuthPanel *panel = [[MDAuthPanel alloc] initWithFrame:self.view.bounds appKey:AppKey appSecret:AppSecret redirectURL:RedirectURL state:nil];
+    panel.authDelegate = self;
+    [self.view.window addSubview:panel];
+    [panel show];
+}
+
+#pragma mark -
+#pragma mark - MDAuthPanelAuthDelegate
+- (void)mingdaoAuthPanel:(MDAuthPanel *)panel didFinishAuthorizeWithResult:(NSDictionary *)result
+{
+    // @MDAuthPanel 验证结束 返回结果
+    [panel hide];
+    NSString *errorStirng= result[MDAuthErrorKey];
+    if (errorStirng) {
+        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Failed!" message:errorStirng delegate:nil cancelButtonTitle:@"Done" otherButtonTitles:nil];
+        [alertView show];
+        [MDAPIManager sharedManager].accessToken = @"0";
+    } else {
+        NSString *accessToken = result[MDAuthAccessTokenKey];
+        //    NSString *refeshToken = result[MDAuthRefreshTokenKey];
+        //    NSString *expireTime = result[MDAuthExpiresTimeKeyl];
+        [MDAPIManager sharedManager].accessToken = accessToken;
+        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Succeed!" message:[NSString stringWithFormat:@"token = %@", accessToken] delegate:nil cancelButtonTitle:@"Done" otherButtonTitles:nil];
+        [alertView show];
+    }
+}
+
+
+#pragma mark -
+#pragma mark - Notification
+- (void)newTokenSet:(NSNotification *)notification
+{
+    if ([[MDAPIManager sharedManager].accessToken isEqualToString:@"0"]) {
+        self.authSwitch.on = NO;
+        self.authSwitch.enabled = YES;
+        [self.indicator stopAnimating];
+    } else {
+        [[[MDAPIManager sharedManager] loadAllUsersWithHandler:^(NSArray *objects, NSError *error) {
+            if (error) {
+                self.authSwitch.on = NO;
+                self.authSwitch.enabled = YES;
+                [self.indicator stopAnimating];
+                return ;
+            } else {
+                [MDWCGlobal saveContacts:objects];
+                self.authSwitch.on = YES;
+                self.authSwitch.enabled = YES;
+                [self.indicator stopAnimating];
+            }
+        }] start];
+    }
+}
 @end
