@@ -42,8 +42,6 @@
 {
     NSDictionary *result = [MDAuthenticator mingdaoAppDidFinishAuthenticationWithURL:url];
     if (result) {
-        [MDWCGlobal saveAuthInfo:result];
-        
         NSLog(@"%@", result);
         NSString *errorStirng= result[MDAuthErrorKey];
         if (errorStirng) {
@@ -53,6 +51,7 @@
             return YES;
         }
         
+        [MDWCGlobal saveAuthInfo:result];
         NSString *accessToken = result[MDAuthAccessTokenKey];
         //    NSString *refeshToken = result[MDAuthRefreshTokenKey];
         //    NSString *expireTime = result[MDAuthExpiresTimeKeyl];

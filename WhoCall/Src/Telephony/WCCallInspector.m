@@ -163,7 +163,7 @@
     [def registerDefaults:@{
                             kSettingKeyLiarPhone        : @(YES),
                             kSettingKeyPhoneLocation    : @(YES),
-                            kSettingKeyContactName      : @(NO),
+                            kSettingKeyContactName      : @(YES),
                             kSettingKeyHangupAdsCall    : @(NO),
                             kSettingKeyHangupCheatCall  : @(NO),
                             }];

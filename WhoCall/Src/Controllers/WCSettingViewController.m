@@ -13,8 +13,8 @@
 #import "WCAddressBook.h"
 #import "UIAlertView+MKBlockAdditions.h"
 
-#define AppKey @"935527504"
-#define AppSecret @"4fb83603c7904cd9861895a17ce1530c"
+#define AppKey @"B8AEBC1EFF17"
+#define AppSecret @"EAB433F7A97771AD67E3C67C502D33"
 #define RedirectURL @"http://www.mingdao.com"
 
 @interface WCSettingViewController () <MDAuthPanelDelegate>
@@ -65,6 +65,10 @@
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    if (indexPath.section == 5) {
+        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"mailto://weetom.wang@mingdao.com"]];
+    }
 }
 
 - (IBAction)onSettingValueChanged:(UISwitch *)sender
@@ -122,6 +126,9 @@
 {
     self.authSwitch.enabled = NO;
     [self.indicator startAnimating];
+    
+    [self authorizeByMingdaoMobilePage];
+    return;
     if (![MDAuthenticator authorizeByMingdaoAppWithAppKey:AppKey appSecret:AppSecret]) {
         // 未安装明道App
         [self authorizeByMingdaoMobilePage];
@@ -131,7 +138,7 @@
 - (void)authorizeByMingdaoMobilePage
 {
     // 通过 @MDAuthPanel 进行web验证
-    MDAuthPanel *panel = [[MDAuthPanel alloc] initWithFrame:self.view.bounds appKey:AppKey appSecret:AppSecret redirectURL:RedirectURL state:nil];
+    MDAuthPanel *panel = [[MDAuthPanel alloc] initWithFrame:self.view.frame appKey:AppKey appSecret:AppSecret redirectURL:RedirectURL state:nil];
     panel.authDelegate = self;
     [self.view.window addSubview:panel];
     [panel show];
@@ -143,18 +150,19 @@
 {
     // @MDAuthPanel 验证结束 返回结果
     [panel hide];
-    NSString *errorStirng= result[MDAuthErrorKey];
-    if (errorStirng) {
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Failed!" message:errorStirng delegate:nil cancelButtonTitle:@"Done" otherButtonTitles:nil];
-        [alertView show];
-        [MDAPIManager sharedManager].accessToken = @"0";
-    } else {
-        NSString *accessToken = result[MDAuthAccessTokenKey];
-        //    NSString *refeshToken = result[MDAuthRefreshTokenKey];
-        //    NSString *expireTime = result[MDAuthExpiresTimeKeyl];
-        [MDAPIManager sharedManager].accessToken = accessToken;
-        UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Succeed!" message:[NSString stringWithFormat:@"token = %@", accessToken] delegate:nil cancelButtonTitle:@"Done" otherButtonTitles:nil];
-        [alertView show];
+    if (result) {
+        NSString *errorStirng= result[MDAuthErrorKey];
+        if (errorStirng) {
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"Failed!" message:errorStirng delegate:nil cancelButtonTitle:@"Done" otherButtonTitles:nil];
+            [alertView show];
+            [MDAPIManager sharedManager].accessToken = @"0";
+        } else {
+            [MDWCGlobal saveAuthInfo:result];
+            NSString *accessToken = result[MDAuthAccessTokenKey];
+            //    NSString *refeshToken = result[MDAuthRefreshTokenKey];
+            //    NSString *expireTime = result[MDAuthExpiresTimeKeyl];
+            [MDAPIManager sharedManager].accessToken = accessToken;
+        }
     }
 }
 
@@ -179,6 +187,8 @@
                 self.authSwitch.on = YES;
                 self.authSwitch.enabled = YES;
                 [self.indicator stopAnimating];
+                
+                [[UIAlertView alertViewWithTitle:@"" message:@"授权结束，请不要手动结束应用，当同事通过记录在明道中的号码拨打过来时，您将听到提示音" cancelButtonTitle:@"确定"] show];
             }
         }] start];
     }
